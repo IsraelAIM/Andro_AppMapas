@@ -16,10 +16,9 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.*
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
@@ -31,6 +30,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     var locationRequest: LocationRequest? = null
     var callback: LocationCallback? = null
 
+    private var listaMarcadores: ArrayList<Marker>? = null
+
+    //VARS
+    private var marcadorGolden: Marker? = null
+    private var marcadorPiram: Marker? = null
+    private var marcadorPisa: Marker? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -38,12 +44,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         inicializarLocationRequest()
 
         callback = object : LocationCallback() {
+            @SuppressLint("MissingPermission")
             override fun onLocationResult(locationResult: LocationResult) {
                 super.onLocationResult(locationResult)
                 for (ubicacion in locationResult?.locations!!) {
 
-                    if (mMap !=null){
-                        mMap
+                    if (mMap != null) {
+                        mMap.isMyLocationEnabled = true
+                        mMap.uiSettings.isMyLocationButtonEnabled = true
+                        val exitoCam = mMap.setMapStyle(
+                            MapStyleOptions.loadRawResourceStyle(
+                                applicationContext,
+                                R.raw.estilos_maps
+                            )
+                        )
+                        if (exitoCam) {
+                            //Mencionar que hubo en un problema al cambiar el tipo de mapa
+                        }
                         Toast.makeText(
                             applicationContext,
                             ubicacion.latitude.toString() + " , " + ubicacion.longitude.toString(),
@@ -71,8 +88,59 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        val Golden_Gate = LatLng(37.8199286, -122.4782551)
+        val Piramide = LatLng(30.00944, 31.20861)
+        val Pisa = LatLng(43.7100385, 10.3977407)
 
-        // Add a marker in Sydney and move the camera
+        marcadorGolden = mMap.addMarker(
+            MarkerOptions()
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                .position(Golden_Gate)
+                .title("Golden Gate")
+                .alpha(0.3f)
+
+        )
+        marcadorGolden?.tag = 0
+
+        marcadorPiram = mMap.addMarker(MarkerOptions()
+            .alpha(0.3f)
+            .snippet("Piramides de gran anchura")
+            .icon(BitmapDescriptorFactory.fromResource(R.drawable.asq))
+            .position(Piramide).title("Piramides"))
+        marcadorPiram?.tag = 0
+
+        marcadorPisa = mMap.addMarker(MarkerOptions()
+            .alpha(0.3f)
+            .snippet("Torre famoso por estar inclinada")
+            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            .position(Pisa).title("Pisa"))
+        marcadorPisa?.tag = 0
+        mMap.setOnMarkerClickListener(this)
+
+        prepararMarcadores()
+    }
+
+    private fun prepararMarcadores() {
+        listaMarcadores = ArrayList()
+        mMap.setOnMapLongClickListener { location: LatLng? ->
+            listaMarcadores?.add(
+                mMap.addMarker(MarkerOptions().alpha(0.3f)
+                    .snippet("Torre famoso por estar inclinada")
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.asq))
+                    .position(location!!).title("Golden Gate"))!!
+            )
+        }
+    }
+
+    override fun onMarkerClick(marcador: Marker): Boolean {
+        var numeroClicks = marcador?.tag as Int
+        if (numeroClicks != null) {
+            numeroClicks++
+            marcador?.tag = numeroClicks
+            Toast.makeText(this, "Se han dado ${numeroClicks.toString()}", Toast.LENGTH_SHORT)
+                .show()
+        }
+        return true
     }
 
     override fun onStart() {
@@ -83,6 +151,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             pedirPermisos()
         }
     }
+
     override fun onPause() {
         super.onPause()
         detenerActualizacionUbicacion()
@@ -163,9 +232,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
+
     private fun detenerActualizacionUbicacion() {
         callback?.let { fusedLocationClient?.removeLocationUpdates(it) }
     }
+
+
     ///FIN FUNCIONES PERMISO
     //Se ejecuta cuando está listo
 
